@@ -1,12 +1,12 @@
 const CACHE_NAME = 'kinetic-v3';
 
 const urlsToCache = [
-    '/index.html',
-    '/styles.css',
-    '/app.js',
-    '/manifest.json',
-    '/icon-192.png',
-    '/icon-512.png'
+    '/kinetic/index.html',
+    '/kinetic/styles.css',
+    '/kinetic/app.js',
+    '/kinetic/manifest.json',
+    '/kinetic/icon-192.png',
+    '/kinetic/icon-512.png'
 ];
 
 // Install → cache files
