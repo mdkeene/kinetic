@@ -625,17 +625,16 @@ if ('serviceWorker' in navigator) {
 // --- Pull-to-Refresh Suppression (Mobile Safety) ---
 let touchStartY = 0;
 window.addEventListener('touchstart', (e) => {
-    touchStartY = e.touches[0].pageY;
+    touchStartY = e.touches[0].clientY;
 }, { passive: true });
 
 window.addEventListener('touchmove', (e) => {
-    const y = e.touches[0].pageY;
-    const deltaY = y - touchStartY;
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - touchStartY;
 
     // Prevent default refresh ONLY if:
-    // 1. At very top of page
-    // 2. Swiping DOWN (deltaY > 0)
-    // 3. Delta is large enough to be a pull gesture (> 10px)
+    // 1. At very top of page (window.scrollY === 0)
+    // 2. Swiping DOWN (deltaY > 10)
     if (window.scrollY === 0 && deltaY > 10) {
         e.preventDefault();
     }
