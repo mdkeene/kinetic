@@ -102,7 +102,7 @@ const pauseOverlay = document.getElementById('pause-overlay');
 function switchView(viewName) {
     appState.view = viewName;
     [libraryView, builderView, hubView].forEach(v => v.classList.remove('active'));
-    
+
     if (viewName === 'library') {
         libraryView.classList.add('active');
         renderLibrary();
@@ -123,8 +123,8 @@ function renderLibrary() {
         </header>
         <div class="workout-grid">
             ${appState.workouts.map(w => {
-                const totalDuration = w.intervals.reduce((acc, i) => acc + (parseInt(i.duration) || 0), 0);
-                return `
+        const totalDuration = w.intervals.reduce((acc, i) => acc + (parseInt(i.duration) || 0), 0);
+        return `
                 <div class="workout-card">
                     <div class="workout-goal">${w.goal}</div>
                     <h3>${w.name}</h3>
@@ -147,7 +147,7 @@ function renderLibrary() {
                     </div>
                 </div>
                 `;
-            }).join('')}
+    }).join('')}
         </div>
     `;
 }
@@ -187,14 +187,14 @@ function openBuilder(id = null) {
 }
 
 function createDefaultInterval() {
-    return { 
+    return {
         id: crypto.randomUUID(),
-        type: 'work', 
-        name: 'WORK', 
-        duration: 300, 
-        power: { type: 'fixed', value: 200 }, 
-        hrZone: 'Z3', 
-        cadence: { min: 85, max: 95 } 
+        type: 'work',
+        name: 'WORK',
+        duration: 300,
+        power: { type: 'fixed', value: 200 },
+        hrZone: 'Z3',
+        cadence: { min: 85, max: 95 }
     };
 }
 
@@ -299,7 +299,7 @@ function updateInterval(id, path, value) {
     const keys = path.split('.');
     let target = appState.builder.intervals.find(i => i.id === id);
     if (!target) return;
-    
+
     for (let i = 0; i < keys.length - 1; i++) {
         // Ensure child objects exist without overwriting
         if (typeof target[keys[i]] === 'undefined') {
@@ -307,7 +307,7 @@ function updateInterval(id, path, value) {
         }
         target = target[keys[i]];
     }
-    
+
     target[keys[keys.length - 1]] = value;
 
     appState.builder.isDirty = true;
@@ -315,7 +315,7 @@ function updateInterval(id, path, value) {
     if (path === 'type') {
         target.name = value.toUpperCase();
     }
-    
+
     if (path === 'power.type') {
         // Refresh to show/hide fixed vs range inputs
         renderBuilder();
@@ -341,11 +341,11 @@ function removeInterval(id) {
 function validateWorkout(workout) {
     if (!workout.name || workout.name.trim() === '') return false;
     if (!workout.intervals || workout.intervals.length === 0) return false;
-    
+
     for (const interval of workout.intervals) {
         if (!interval.duration || interval.duration <= 0) return false;
         if (!interval.power) return false;
-        
+
         // Strict Numeric & NaN checks
         if (interval.power.type === 'fixed') {
             const val = interval.power.value;
@@ -399,7 +399,7 @@ function startWorkoutById(id) {
     const workout = appState.workouts.find(w => w.id === id);
     if (!workout || !validateWorkout(workout)) return;
     if (!workout.intervals || workout.intervals.length === 0) return;
-    
+
     appState.hub = {
         currentWorkout: workout,
         index: 0,
@@ -408,7 +408,7 @@ function startWorkoutById(id) {
         lastTick: Date.now(),
         lastBeep: null
     };
-    
+
     switchView('hub');
     updateUI();
 }
@@ -419,11 +419,11 @@ function updateUI() {
     if (!current) return;
     const totalWorkoutTime = appState.hub.currentWorkout.intervals.reduce((acc, curr) => acc + (parseInt(curr.duration) || 0), 0);
     const workIntervalsTotal = appState.hub.currentWorkout.intervals.filter(i => i.type === 'work').length;
-    
+
     // Timer & Status
     timerDisplay.textContent = formatTime(appState.hub.timeLeft);
     intervalTitle.textContent = current.display || current.name;
-    
+
     // Interval Counter Logic
     if (current.type === 'work') {
         const currentWorkIdx = appState.hub.currentWorkout.intervals.slice(0, appState.hub.index + 1).filter(i => i.type === 'work').length;
@@ -431,7 +431,7 @@ function updateUI() {
     } else {
         intervalCounter.textContent = `${current.name} PHASE`;
     }
-    
+
     // Metrics
     let powerDisplay = '';
     if (current.power.type === 'fixed') {
@@ -440,20 +440,20 @@ function updateUI() {
         powerDisplay = `${current.power.min}-${current.power.max}`;
     }
     powerValue.textContent = powerDisplay;
-    
+
     cadenceValueElement.textContent = `${current.cadence.min}-${current.cadence.max}`;
     hrValueElement.textContent = current.hrZone;
-    
+
     // Progress Bars
     const currentProgress = ((current.duration - appState.hub.timeLeft) / current.duration) * 100;
     mainProgressBar.style.width = `${currentProgress}%`;
-    
+
     const timeBeforeCurrent = appState.hub.currentWorkout.intervals.slice(0, appState.hub.index).reduce((acc, curr) => acc + (parseInt(curr.duration) || 0), 0);
     const totalElapsed = timeBeforeCurrent + (current.duration - appState.hub.timeLeft);
     const totalProgress = (totalElapsed / totalWorkoutTime) * 100;
     totalProgressBar.style.width = `${totalProgress}%`;
     totalProgressText.textContent = `${Math.floor(totalProgress)}%`;
-    
+
     // Controls
     toggleIcon.textContent = appState.hub.isPaused ? '▶' : '⏸';
     toggleLabel.textContent = appState.hub.isPaused ? 'RESUME' : 'PAUSE';
@@ -480,7 +480,7 @@ function isMobile() {
 }
 
 function scrollToActiveInterval() {
-    if (isMobile()) return; 
+    if (isMobile()) return;
 
     const active = document.querySelector('.step-item.active');
     if (!active) return;
@@ -498,7 +498,7 @@ function renderSidebar() {
         const li = document.createElement('li');
         let statusText = 'PENDING';
         let className = 'step-item';
-        
+
         if (idx < appState.hub.index) {
             className += ' done';
             statusText = 'DONE';
@@ -530,10 +530,10 @@ function tick() {
 
     const now = Date.now();
     const delta = (now - appState.hub.lastTick) / 1000;
-    
+
     if (delta >= 1) {
         appState.hub.timeLeft -= Math.floor(delta);
-        appState.hub.lastTick = now - ((delta % 1) * 1000); 
+        appState.hub.lastTick = now - ((delta % 1) * 1000);
 
         // Countdown Beeps (3, 2, 1)
         const secondsLeft = Math.ceil(appState.hub.timeLeft);
@@ -543,11 +543,11 @@ function tick() {
                 appState.hub.lastBeep = secondsLeft;
             }
         }
-        
+
         if (appState.hub.timeLeft <= 0) {
             advanceInterval();
         }
-        
+
         updateUI();
     }
 }
@@ -612,4 +612,12 @@ endWorkoutBtn.addEventListener('click', () => {
 
 // --- Init ---
 switchView('library');
-setInterval(tick, 200); 
+setInterval(tick, 200);
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(() => console.log('Service Worker registered'))
+            .catch(err => console.log('SW error:', err));
+    });
+}
