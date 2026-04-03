@@ -1,7 +1,6 @@
 const CACHE_NAME = 'kinetic-v1';
 
 const urlsToCache = [
-    '/',
     '/index.html',
     '/styles.css',
     '/app.js',
