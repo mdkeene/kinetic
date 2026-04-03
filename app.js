@@ -659,7 +659,7 @@ importInput.addEventListener('change', (e) => {
             if (!Array.isArray(imported)) throw new Error('Not an array');
 
             let importedCount = 0;
-            let skippedCount = 0;
+            let duplicateCount = 0;
 
             imported.forEach(workout => {
                 const normalizedWorkout = {
@@ -675,21 +675,33 @@ importInput.addEventListener('change', (e) => {
                 // Validation
                 if (!validateWorkout(normalizedWorkout)) return;
 
-                // Deduplication
+                // Handle ID Conflicts as Duplicates
                 const exists = appState.workouts.some(w => w.id === normalizedWorkout.id);
                 if (exists) {
-                    skippedCount++;
+                    normalizedWorkout.id = crypto.randomUUID(); // Re-assign for duplication
+                    duplicateCount++;
                 } else {
-                    appState.workouts.push(structuredClone(normalizedWorkout));
                     importedCount++;
                 }
+
+                appState.workouts.push(structuredClone(normalizedWorkout));
             });
 
-            if (importedCount === 0 && skippedCount === 0) {
+            if (importedCount === 0 && duplicateCount === 0) {
                 alert('No valid workouts found in file.');
             } else {
                 storage.saveWorkouts(appState.workouts);
-                alert(`Imported ${importedCount} workouts (${skippedCount} skipped)`);
+
+                let message = '';
+                if (importedCount > 0 && duplicateCount > 0) {
+                    message = `Imported ${importedCount} workouts (${duplicateCount} duplicates)`;
+                } else if (duplicateCount > 0) {
+                    message = `Imported ${duplicateCount} duplicate workouts`;
+                } else {
+                    message = `Imported ${importedCount} workouts`;
+                }
+
+                alert(message);
                 renderLibrary();
             }
         } catch (err) {
