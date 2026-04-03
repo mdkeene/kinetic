@@ -508,7 +508,6 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 3rem;
-    flex-wrap: wrap;
     gap: var(--sz-3);
 }
 
@@ -516,6 +515,11 @@ body {
     display: flex;
     gap: 12px;
     align-items: center;
+}
+
+.utility-actions {
+    display: flex;
+    gap: 12px;
 }
 
 .library-title {
@@ -969,9 +973,27 @@ body {
     .library-header,
     .builder-header {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: var(--sz-3);
         margin-bottom: var(--sz-4);
+        text-align: center;
+    }
+
+    .header-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .utility-actions {
+        display: flex;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .utility-actions .builder-btn.secondary {
+        /* Side-by-side management in mobile */
+        flex: 1;
+        justify-content: center;
     }
 
     .library-title {
