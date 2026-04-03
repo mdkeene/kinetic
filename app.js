@@ -621,3 +621,17 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.log('SW error:', err));
     });
 }
+
+// --- Pull-to-Refresh Suppression (Mobile Safety) ---
+let touchStartY = 0;
+window.addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].pageY;
+}, { passive: true });
+
+window.addEventListener('touchmove', (e) => {
+    const y = e.touches[0].pageY;
+    // If at top of page and swiping down, prevent default refresh
+    if (window.scrollY === 0 && y > touchStartY) {
+        e.preventDefault();
+    }
+}, { passive: false });
