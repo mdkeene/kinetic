@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kinetic-v2';
+const CACHE_NAME = 'kinetic-v3';
 
 const urlsToCache = [
     '/index.html',
@@ -12,8 +12,16 @@ const urlsToCache = [
 // Install → cache files
 self.addEventListener('install', event => {
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(urlsToCache))
+        caches.open(CACHE_NAME).then(async cache => {
+            for (const url of urlsToCache) {
+                try {
+                    await cache.add(url);
+                    console.log('Cached:', url);
+                } catch (err) {
+                    console.error('FAILED to cache:', url, err);
+                }
+            }
+        })
     );
 });
 
