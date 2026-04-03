@@ -121,10 +121,19 @@ function renderLibrary() {
         <header class="library-header">
             <h1 class="library-title">WORKOUT LIBRARY</h1>
             <div class="header-actions">
-                <button class="builder-btn add" onclick="openBuilder()">+ NEW WORKOUT</button>
+                <button class="builder-btn add" onclick="openBuilder()" title="New Workout">
+                    <span class="btn-icon">+</span>
+                    <span class="btn-label">NEW WORKOUT</span>
+                </button>
                 <div class="utility-actions">
-                    <button class="builder-btn secondary" onclick="exportWorkouts()">EXPORT</button>
-                    <button class="builder-btn secondary" onclick="triggerImport()">IMPORT</button>
+                    <button class="builder-btn secondary" onclick="triggerImport()" title="Import Workouts">
+                        <span class="btn-icon">↑</span>
+                        <span class="btn-label">IMPORT</span>
+                    </button>
+                    <button class="builder-btn secondary" onclick="exportWorkouts()" title="Export Workouts">
+                        <span class="btn-icon">↓</span>
+                        <span class="btn-label">EXPORT</span>
+                    </button>
                 </div>
             </div>
         </header>

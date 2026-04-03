@@ -522,6 +522,14 @@ body {
     gap: 12px;
 }
 
+.library-header .builder-btn .btn-icon {
+    display: inline;
+}
+
+.library-header .builder-btn.secondary .btn-icon {
+    display: none; /* Hide icons on mobile for secondary buttons */
+}
+
 .library-title {
     font-size: 2.2rem;
     font-weight: 900;
@@ -877,6 +885,59 @@ body {
 
 .builder-btn.cancel:hover {
     color: #fff;
+}
+
+/* Desktop Header Optimization (Icons Only) */
+@media (min-width: 768px) {
+    .library-header .header-actions {
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    .library-header .utility-actions {
+        gap: 8px;
+    }
+
+    .library-header .builder-btn {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        background-color: #0c0c0c;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-secondary);
+    }
+
+    .library-header .builder-btn.add {
+        margin-bottom: 0;
+        width: 44px;
+        border-style: solid;
+    }
+
+    .library-header .builder-btn .btn-label {
+        display: none;
+    }
+
+    .library-header .builder-btn .btn-icon {
+        display: flex !important;
+        font-size: 1.5rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .library-header .builder-btn:hover {
+        background-color: #1a1a1a;
+        border-color: rgba(255, 255, 255, 0.2);
+        color: var(--text-primary);
+    }
+
+    .library-header .builder-btn.add:hover {
+        border-color: var(--accent-primary);
+        color: var(--accent-primary);
+    }
 }
 
 /* Responsive Adjustments */
