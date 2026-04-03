@@ -77,6 +77,7 @@ appState.workouts.forEach(workout => {
 const libraryView = document.getElementById('library-view');
 const builderView = document.getElementById('builder-view');
 const hubView = document.getElementById('hub-view');
+const importInput = document.getElementById('import-input');
 
 const timerDisplay = document.getElementById('timer-display');
 const intervalTitle = document.getElementById('interval-title');
@@ -119,7 +120,11 @@ function renderLibrary() {
     libraryView.innerHTML = `
         <header class="library-header">
             <h1 class="library-title">WORKOUT LIBRARY</h1>
-            <button class="builder-btn add" onclick="openBuilder()">+ NEW WORKOUT</button>
+            <div class="header-actions">
+                <button class="builder-btn secondary" onclick="exportWorkouts()">EXPORT</button>
+                <button class="builder-btn secondary" onclick="triggerImport()">IMPORT</button>
+                <button class="builder-btn add" onclick="openBuilder()">+ NEW WORKOUT</button>
+            </div>
         </header>
         <div class="workout-grid">
             ${appState.workouts.map(w => {
@@ -621,3 +626,78 @@ if ('serviceWorker' in navigator) {
             .catch(err => console.log('SW error:', err));
     });
 }
+
+// --- Import / Export ---
+function exportWorkouts() {
+    if (appState.workouts.length === 0) {
+        alert('No workouts to export.');
+        return;
+    }
+    const data = JSON.stringify(appState.workouts, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.download = `workouts-${timestamp}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function triggerImport() {
+    importInput.click();
+}
+
+importInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const imported = JSON.parse(event.target.result);
+            if (!Array.isArray(imported)) throw new Error('Not an array');
+
+            let importedCount = 0;
+            let skippedCount = 0;
+
+            imported.forEach(workout => {
+                const normalizedWorkout = {
+                    ...workout,
+                    goal: workout.goal || 'Custom',
+                    intervals: (workout.intervals || []).map(interval => ({
+                        ...interval,
+                        id: interval.id || crypto.randomUUID()
+                    })),
+                    id: workout.id || crypto.randomUUID()
+                };
+
+                // Validation
+                if (!validateWorkout(normalizedWorkout)) return;
+
+                // Deduplication
+                const exists = appState.workouts.some(w => w.id === normalizedWorkout.id);
+                if (exists) {
+                    skippedCount++;
+                } else {
+                    appState.workouts.push(structuredClone(normalizedWorkout));
+                    importedCount++;
+                }
+            });
+
+            if (importedCount === 0 && skippedCount === 0) {
+                alert('No valid workouts found in file.');
+            } else {
+                storage.saveWorkouts(appState.workouts);
+                alert(`Imported ${importedCount} workouts (${skippedCount} skipped)`);
+                renderLibrary();
+            }
+        } catch (err) {
+            alert('Import failed: Invalid JSON or file format.');
+        } finally {
+            // File Input Reset
+            e.target.value = '';
+        }
+    };
+    reader.readAsText(file);
+});
