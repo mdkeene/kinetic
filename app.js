@@ -630,8 +630,13 @@ window.addEventListener('touchstart', (e) => {
 
 window.addEventListener('touchmove', (e) => {
     const y = e.touches[0].pageY;
-    // If at top of page and swiping down, prevent default refresh
-    if (window.scrollY === 0 && y > touchStartY) {
+    const deltaY = y - touchStartY;
+
+    // Prevent default refresh ONLY if:
+    // 1. At very top of page
+    // 2. Swiping DOWN (deltaY > 0)
+    // 3. Delta is large enough to be a pull gesture (> 10px)
+    if (window.scrollY === 0 && deltaY > 10) {
         e.preventDefault();
     }
 }, { passive: false });
