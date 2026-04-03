@@ -28,17 +28,15 @@ html, body {
     background-color: var(--bg-color);
     color: var(--text-primary);
     font-family: var(--font-family);
-    height: 100vh;
-    width: 100vw;
+    height: 100%;
+    width: 100%;
     overflow: hidden;
-    overscroll-behavior-y: contain; /* Disable pull-to-refresh */
 }
 
 #app-wrapper {
     display: flex;
-    height: 100vh;
-    width: 100vw;
-    overscroll-behavior-y: contain;
+    min-height: 100%;
+    width: 100%;
 }
 
 /* Main Dashboard */
@@ -46,10 +44,8 @@ html, body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh;
     padding: var(--sz-5);
     background-color: var(--surface-main);
-    overflow: hidden; /* Prevent HUD leakage */
 }
 
 #app-header {
@@ -84,7 +80,6 @@ html, body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    overflow: hidden;
     position: relative;
     z-index: 1;
 }
@@ -477,10 +472,12 @@ html, body {
 /* View Management */
 .view {
     display: none;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
+    height: 100%;
+    width: 100%;
     background-color: var(--bg-color);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
 }
 
 .view.active {
