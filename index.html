@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINETIC - Performance HUD</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="library-view" class="view">
+        <!-- Library content injected by JS -->
+    </div>
+
+    <div id="builder-view" class="view">
+        <!-- Builder content injected by JS -->
+    </div>
+
+    <div id="hub-view" class="view active">
+        <div id="app-wrapper">
+            <!-- Main Dashboard -->
+            <main id="main-dashboard">
+                <header id="app-header">
+                    <div class="brand">KINETIC</div>
+                    <button id="end-workout-btn" class="icon-btn" title="End Workout">✖</button>
+                </header>
+
+                <section id="focal-point">
+                    <div id="interval-title-group">
+                        <h2 id="interval-title">WORK</h2>
+                        <div id="interval-counter">INTERVAL 1/3</div>
+                    </div>
+                    <div id="timer-display">04:52</div>
+                    <div id="main-progress-container">
+                        <div id="main-progress-bar" style="width: 68%;"></div>
+                    </div>
+                </section>
+
+                <section id="metrics-section">
+                    <div class="metric">
+                        <span class="label">POWER</span>
+                        <div class="value-row">
+                            <span id="power-value" class="value">210-230</span>
+                            <span class="unit">W</span>
+                        </div>
+                    </div>
+                    <div class="metric border-x">
+                        <span class="label">HR ZONE</span>
+                        <div class="value-row">
+                            <span id="hr-value" class="value">Z3</span>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <span class="label">CADENCE</span>
+                        <div class="value-row">
+                            <span id="cadence-value" class="value">85-95</span>
+                            <span class="unit">RPM</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="next-interval-preview">
+                    <span class="next-label">NEXT:</span>
+                    <span id="next-interval-summary">--</span>
+                </section>
+
+                <footer id="controls-area">
+                    <div id="controls-bar">
+                        <button id="reset-btn" class="control-btn secondary">
+                            <span class="icon">⟳</span>
+                            <span class="btn-label">RESET</span>
+                        </button>
+                        <button id="toggle-btn" class="control-btn primary">
+                            <span id="toggle-icon" class="icon">⏸</span>
+                            <span id="toggle-label" class="btn-label">PAUSE</span>
+                        </button>
+                        <button id="skip-btn" class="control-btn secondary">
+                            <span class="icon">⏭</span>
+                            <span class="btn-label">SKIP</span>
+                        </button>
+                    </div>
+                </footer>
+            </main>
+
+            <!-- Sidebar -->
+            <aside id="sidebar">
+                <header class="sidebar-header">
+                    <p class="sub-label">SESSION</p>
+                    <p class="accent-label">INTERVALS</p>
+                </header>
+                <div id="sidebar-scroll-area">
+                    <ul id="interval-list">
+                        <!-- Intervals injected by JS -->
+                    </ul>
+                </div>
+                <footer id="total-progress-section">
+                    <div class="progress-details">
+                        <span class="label">TOTAL PROGRESS</span>
+                        <span id="total-progress-text" class="value">42%</span>
+                    </div>
+                    <div id="total-progress-container">
+                        <div id="total-progress-bar" style="width: 42%;"></div>
+                    </div>
+                </footer>
+            </aside>
+
+            <!-- Pause Status Overlay -->
+            <div id="pause-overlay" style="display: none;">
+                <div class="overlay-content">PAUSED</div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
