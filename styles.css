@@ -115,12 +115,11 @@ body {
 }
 
 #timer-display {
-    font-size: clamp(6rem, 18vw, 13rem);
+    font-size: 19rem;
     font-weight: 900;
-    line-height: 0.9;
-    margin: var(--sz-2) 0;
-    letter-spacing: -0.2rem;
-    font-variant-numeric: tabular-nums;
+    color: var(--accent-primary);
+    letter-spacing: -0.05em;
+    line-height: 0.75;
 }
 
 #main-progress-container {
@@ -455,11 +454,8 @@ body {
 }
 
 #total-progress-container {
-    height: 3px;
-    background-color: #111;
-    overflow: hidden;
-    width: 300px;
-    margin: 0 auto;
+    height: 4px;
+    background-color: #222;
 }
 
 #total-progress-bar {
@@ -531,7 +527,8 @@ body {
 }
 
 .library-header .builder-btn.secondary .btn-icon {
-    display: none; /* Hide icons on mobile for secondary buttons */
+    display: none;
+    /* Hide icons on mobile for secondary buttons */
 }
 
 .library-title {
@@ -670,25 +667,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 3rem;
-}
-
-.metrics-row {
-    font-size: clamp(1rem, 3vw, 1.6rem);
-    font-weight: 800;
-    color: var(--text-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.15rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1.5rem;
-    margin: 1.5rem 0;
-    opacity: 0.8;
-}
-
-#metrics-inline {
-    background: transparent;
-    border: none;
 }
 
 .form-group {
@@ -1027,9 +1005,10 @@ body {
         border-top: 1px solid var(--border-color);
     }
 
-    #controls-bar.hud-controls {
-        grid-template-columns: 2fr 1fr;
-        gap: 1rem;
+    #controls-bar {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
     }
 
     .control-btn {

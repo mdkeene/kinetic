@@ -43,6 +43,24 @@
                         </div>
                     </section>
 
+                    <section id="metrics-section">
+                        <div class="metric">
+                            <span class="label">POWER</span>
+                            <div class="value-row">
+                                <span id="power-value" class="value">210-230</span>
+                                <span class="unit">W</span>
+                            </div>
+                        </div>
+                        <div class="metric border-x">
+                            <span class="label">HR ZONE</span>
+                            <div class="value-row">
+                                <span id="hr-value" class="value">Z3</span>
+                            </div>
+                        </div>
+                        <div class="metric">
+                            <span class="label">CADENCE</span>
+                            <div class="value-row">
+                                <span id="cadence-value" class="value">85-95</span>
                                 <span class="unit">RPM</span>
                             </div>
                         </div>
@@ -54,7 +72,11 @@
                     </section>
 
                     <footer id="controls-area">
-                        <div id="controls-bar" class="hud-controls">
+                        <div id="controls-bar">
+                            <button id="reset-btn" class="control-btn secondary">
+                                <span class="icon">⟳</span>
+                                <span class="btn-label">RESET</span>
+                            </button>
                             <button id="toggle-btn" class="control-btn primary">
                                 <span id="toggle-icon" class="icon">⏸</span>
                                 <span id="toggle-label" class="btn-label">PAUSE</span>

@@ -82,10 +82,13 @@ const importInput = document.getElementById('import-input');
 const timerDisplay = document.getElementById('timer-display');
 const intervalTitle = document.getElementById('interval-title');
 const intervalCounter = document.getElementById('interval-counter');
-const metricsInline = document.getElementById('metrics-inline');
+const powerValue = document.getElementById('power-value');
+const cadenceValueElement = document.getElementById('cadence-value');
+const hrValueElement = document.getElementById('hr-value');
 
 const toggleBtn = document.getElementById('toggle-btn');
 const skipBtn = document.getElementById('skip-btn');
+const resetBtn = document.getElementById('reset-btn');
 const endWorkoutBtn = document.getElementById('end-workout-btn');
 const intervalList = document.getElementById('interval-list');
 
@@ -445,17 +448,17 @@ function updateUI() {
         intervalCounter.textContent = `${current.name} PHASE`;
     }
 
-    // Metrics (High Glanceability Inline Row)
+    // Metrics
     let powerDisplay = '';
     if (current.power.type === 'fixed') {
-        powerDisplay = `${current.power.value}W`;
+        powerDisplay = `${current.power.value}`;
     } else {
-        powerDisplay = `${current.power.min}-${current.power.max}W`;
+        powerDisplay = `${current.power.min}-${current.power.max}`;
     }
-    const cadenceDisplay = `${current.cadence.min}-${current.cadence.max} RPM`;
-    const hrDisplay = current.hrZone;
+    powerValue.textContent = powerDisplay;
 
-    metricsInline.textContent = `${hrDisplay} • ${powerDisplay} • ${cadenceDisplay}`;
+    cadenceValueElement.textContent = `${current.cadence.min}-${current.cadence.max}`;
+    hrValueElement.textContent = current.hrZone;
 
     // Progress Bars
     const currentProgress = ((current.duration - appState.hub.timeLeft) / current.duration) * 100;
