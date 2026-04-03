@@ -9,7 +9,7 @@
     --text-secondary: #666666;
     --border-color: rgba(255, 255, 255, 0.08);
     --font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    
+
     /* Spacing System */
     --sz-1: 4px;
     --sz-2: 8px;
@@ -24,7 +24,8 @@
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     background-color: var(--bg-color);
     color: var(--text-primary);
     font-family: var(--font-family);
@@ -33,9 +34,18 @@ html, body {
     overflow: hidden;
 }
 
+#app-viewport {
+    height: 100dvh;
+    width: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    /* Rule #7: Prevent pull-to-refresh */
+}
+
 #app-wrapper {
     display: flex;
-    min-height: 100%;
+    height: 100%;
     width: 100%;
 }
 
@@ -235,7 +245,8 @@ html, body {
 
 /* Next Interval Preview Component */
 #next-interval-preview {
-    display: none; /* Hidden on desktop by default (shown on sidebar) */
+    display: none;
+    /* Hidden on desktop by default (shown on sidebar) */
     justify-content: center;
     align-items: center;
     gap: 1rem;
@@ -296,14 +307,17 @@ html, body {
 #sidebar-scroll-area {
     flex: 1;
     overflow-y: auto;
-    
+
     /* Hide scrollbar functionality */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
 }
 
 #sidebar-scroll-area::-webkit-scrollbar {
-    display: none; /* Chrome, Safari */
+    display: none;
+    /* Chrome, Safari */
 }
 
 #interval-list {
@@ -472,12 +486,11 @@ html, body {
 /* View Management */
 .view {
     display: none;
-    height: 100%;
+    min-height: 100%;
     width: 100%;
     background-color: var(--bg-color);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    overflow: visible;
+    /* Rule #4: Parent (#app-viewport) handles scrolling */
 }
 
 .view.active {
@@ -488,7 +501,6 @@ html, body {
 /* Library View */
 #library-view {
     padding: 3rem;
-    overflow-y: auto;
 }
 
 .library-header {
@@ -617,7 +629,6 @@ html, body {
 /* Builder View */
 #builder-view {
     padding: 3rem;
-    overflow-y: auto;
 }
 
 .builder-header {
@@ -843,14 +854,8 @@ html, body {
 }
 
 @media (max-width: 768px) {
-    body {
-        overflow: auto;
-        height: auto;
-    }
-
     #app-wrapper {
         flex-direction: column;
-        height: auto;
     }
 
     #main-dashboard {
@@ -926,12 +931,14 @@ html, body {
         max-width: 400px;
     }
 
-    #library-view, #builder-view {
+    #library-view,
+    #builder-view {
         padding: var(--sz-4) var(--sz-3);
-        overflow-y: auto;
+        overflow: visible;
     }
 
-    .library-header, .builder-header {
+    .library-header,
+    .builder-header {
         flex-direction: column;
         align-items: flex-start;
         gap: var(--sz-3);
