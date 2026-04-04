@@ -8,7 +8,69 @@ function getAudioContext() {
     return audioCtx;
 }
 
+// --- State & Settings ---
+let settings = JSON.parse(localStorage.getItem('kinetic_settings')) || { sound: true };
+let schedule = JSON.parse(localStorage.getItem('kinetic_schedule')) || {};
+
+function getLocalDateStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function getCurrentWeekDates() {
+    const dates = [];
+    const now = new Date();
+    const day = now.getDay() || 7; 
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - day + 1);
+
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    for(let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        dates.push({
+            label: days[i],
+            dateStr: getLocalDateStr(d)
+        });
+    }
+    return dates;
+}
+
+function assignWorkoutToDate(id, dateStr) {
+    if (!schedule[dateStr]) schedule[dateStr] = [];
+    
+    // Toggle Logic
+    const idx = schedule[dateStr].indexOf(id);
+    if (idx > -1) {
+        schedule[dateStr].splice(idx, 1);
+    } else {
+        if (schedule[dateStr].length >= 3) {
+            console.log("Max 3 workouts per day reached.");
+            return;
+        }
+        schedule[dateStr].push(id);
+    }
+    
+    localStorage.setItem('kinetic_schedule', JSON.stringify(schedule));
+    renderLibrary(); // Re-render to show updated active state
+}
+
+function toggleSchedulePanel(id) {
+    if (appState.activeSchedulePanel === id) {
+        appState.activeSchedulePanel = null;
+    } else {
+        appState.activeSchedulePanel = id;
+    }
+    renderLibrary();
+}
+
+function toggleSound() {
+    settings.sound = !settings.sound;
+    localStorage.setItem('kinetic_settings', JSON.stringify(settings));
+    if (appState.view === 'library') renderLibrary();
+}
+
 function playBeep(frequency = 800, duration = 0.1, volume = 0.2) {
+    if (!settings.sound) return;
     const ctx = getAudioContext();
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -22,6 +84,69 @@ function playBeep(frequency = 800, duration = 0.1, volume = 0.2) {
 
     oscillator.start();
     setTimeout(() => oscillator.stop(), duration * 1000);
+}
+
+// --- Drag & Drop Handlers ---
+let draggedItemIndex = null;
+let dragType = null;
+
+function handleDragStart(e, el, index, type) {
+    if (['button', 'input', 'select'].includes(e.target.tagName.toLowerCase())) {
+        e.preventDefault();
+        return;
+    }
+    draggedItemIndex = index;
+    dragType = type;
+    el.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+}
+
+function handleDragEnter(e, el, type) {
+    e.preventDefault();
+    if (dragType === type) {
+        el.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e, el, type) {
+    if (dragType === type) {
+        el.classList.remove('drag-over');
+    }
+}
+
+function handleDrop(e, dropIndex, type) {
+    e.preventDefault();
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    
+    if (dragType !== type || draggedItemIndex === null || draggedItemIndex === dropIndex) return;
+
+    if (type === 'workout') {
+        const item = appState.workouts.splice(draggedItemIndex, 1)[0];
+        appState.workouts.splice(dropIndex, 0, item);
+        storage.saveWorkouts(appState.workouts);
+        renderLibrary();
+    } else if (type === 'interval') {
+        const item = appState.builder.intervals.splice(draggedItemIndex, 1)[0];
+        appState.builder.intervals.splice(dropIndex, 0, item);
+        appState.builder.isDirty = true;
+        renderBuilder();
+    } else if (type === 'exercise') {
+        const item = appState.builder.exercises.splice(draggedItemIndex, 1)[0];
+        appState.builder.exercises.splice(dropIndex, 0, item);
+        appState.builder.isDirty = true;
+        renderBuilder();
+    }
+}
+
+function handleDragEnd(e, el) {
+    el.classList.remove('dragging');
+    draggedItemIndex = null;
+    dragType = null;
+    document.querySelectorAll('.drag-over').forEach(elem => elem.classList.remove('drag-over'));
 }
 
 // --- Storage Wrapper ---
@@ -38,11 +163,14 @@ const storage = {
 const appState = {
     workouts: storage.loadWorkouts(),
     view: 'library',
+    libraryFilter: 'all',
     hub: {
         currentWorkout: null,
         index: 0,
         timeLeft: 0,
+        timeLeft: 0,
         isPaused: true,
+        isCompleted: false,
         lastTick: Date.now(),
         lastBeep: null
     },
@@ -68,15 +196,23 @@ if (appState.workouts.length === 0) {
 
 // --- Global ID Migration (Stability) ---
 appState.workouts.forEach(workout => {
-    workout.intervals.forEach(interval => {
-        if (!interval.id) interval.id = crypto.randomUUID();
-    });
+    if (!workout.type) workout.type = 'cycling';
+    if (workout.type === 'cycling' && workout.intervals) {
+        workout.intervals.forEach(interval => {
+            if (!interval.id) interval.id = crypto.randomUUID();
+        });
+    } else if (workout.exercises) {
+        workout.exercises.forEach(ex => {
+            if (!ex.id) ex.id = crypto.randomUUID();
+        });
+    }
 });
 
 // --- DOM Elements ---
 const libraryView = document.getElementById('library-view');
 const builderView = document.getElementById('builder-view');
 const hubView = document.getElementById('hub-view');
+const weekView = document.getElementById('week-view');
 const importInput = document.getElementById('import-input');
 
 const timerDisplay = document.getElementById('timer-display');
@@ -102,7 +238,7 @@ const pauseOverlay = document.getElementById('pause-overlay');
 // --- Navigation ---
 function switchView(viewName) {
     appState.view = viewName;
-    [libraryView, builderView, hubView].forEach(v => v.classList.remove('active'));
+    [libraryView, builderView, hubView, weekView].forEach(v => v.classList.remove('active'));
 
     if (viewName === 'library') {
         libraryView.classList.add('active');
@@ -112,6 +248,9 @@ function switchView(viewName) {
         renderBuilder();
     } else if (viewName === 'hub') {
         hubView.classList.add('active');
+    } else if (viewName === 'week') {
+        weekView.classList.add('active');
+        renderWeekView();
     }
 }
 
@@ -121,11 +260,24 @@ function renderLibrary() {
         <header class="library-header">
             <h1 class="library-title">WORKOUT LIBRARY</h1>
             <div class="header-actions">
+                <select class="builder-select" style="width: auto; padding: 0.5rem; margin-right: 1rem;" onchange="appState.libraryFilter = this.value; renderLibrary()">
+                    <option value="all" ${appState.libraryFilter === 'all' ? 'selected' : ''}>All Types</option>
+                    <option value="cycling" ${appState.libraryFilter === 'cycling' ? 'selected' : ''}>Cycling</option>
+                    <option value="stretching" ${appState.libraryFilter === 'stretching' ? 'selected' : ''}>Stretching</option>
+                    <option value="mobility" ${appState.libraryFilter === 'mobility' ? 'selected' : ''}>Mobility</option>
+                </select>
+                <button class="builder-btn add" onclick="switchView('week')" title="Weekly Planner" style="margin-right: 1rem;">
+                    <span class="btn-icon">📅</span>
+                    <span class="btn-label">PLANNER</span>
+                </button>
                 <button class="builder-btn add" onclick="openBuilder()" title="New Workout">
                     <span class="btn-icon">+</span>
                     <span class="btn-label">NEW WORKOUT</span>
                 </button>
-                <div class="utility-actions">
+                    <button class="builder-btn secondary" onclick="toggleSound()" title="Toggle Sound">
+                        <span class="btn-icon">${settings.sound ? '🔊' : '🔇'}</span>
+                        <span class="btn-label">SOUND: ${settings.sound ? 'ON' : 'OFF'}</span>
+                    </button>
                     <button class="builder-btn secondary" onclick="triggerImport()" title="Import Workouts">
                         <span class="btn-icon">↑</span>
                         <span class="btn-label">IMPORT</span>
@@ -138,12 +290,38 @@ function renderLibrary() {
             </div>
         </header>
         <div class="workout-grid">
-            ${appState.workouts.map(w => {
-        const totalDuration = w.intervals.reduce((acc, i) => acc + (parseInt(i.duration) || 0), 0);
+            ${appState.workouts
+                .map((w, index) => ({ w, index }))
+                .filter(item => appState.libraryFilter === 'all' || item.w.type === appState.libraryFilter)
+                .map(({ w, index }) => {
+        const totalDuration = w.type === 'cycling' && w.intervals 
+            ? w.intervals.reduce((acc, i) => acc + (parseInt(i.duration) || 0), 0)
+            : w.exercises ? w.exercises.reduce((acc, i) => acc + (parseInt(i.duration) || 0), 0) : 0;
+            
+        const stepCount = w.type === 'cycling' ? (w.intervals?.length || 0) : (w.exercises?.length || 0);
+
+        const weekDates = getCurrentWeekDates();
+        const isOpen = appState.activeSchedulePanel === w.id;
+        const schedulePanelHTML = `
+            <div id="schedule-panel-${w.id}" class="inline-schedule-panel" style="display: ${isOpen ? 'flex' : 'none'};">
+                ${weekDates.map(d => {
+                    const isScheduled = (schedule[d.dateStr] || []).includes(w.id);
+                    const btnClass = isScheduled ? 'day-btn active' : 'day-btn';
+                    return `<button class="${btnClass}" onclick="assignWorkoutToDate('${w.id}', '${d.dateStr}')">${d.label}</button>`;
+                }).join('')}
+            </div>
+        `;
+
         return `
-                <div class="workout-card">
+                <div class="workout-card fade-in" draggable="true"
+                     ondragstart="handleDragStart(event, this, ${index}, 'workout')"
+                     ondragover="handleDragOver(event)"
+                     ondragenter="handleDragEnter(event, this, 'workout')"
+                     ondragleave="handleDragLeave(event, this, 'workout')"
+                     ondrop="handleDrop(event, ${index}, 'workout')"
+                     ondragend="handleDragEnd(event, this)">
                     <div class="workout-goal">${w.goal}</div>
-                    <h3>${w.name}</h3>
+                    <h3>${w.name} <span style="font-size: 0.5em; opacity: 0.5;">(${w.type.toUpperCase()})</span></h3>
                     <div class="workout-stats">
                         <div class="stat-item">
                             <span class="stat-label">TIME</span>
@@ -151,19 +329,69 @@ function renderLibrary() {
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">STEPS</span>
-                            <span class="stat-value">${w.intervals.length}</span>
+                            <span class="stat-value">${stepCount}</span>
                         </div>
                     </div>
                     <div class="card-actions">
-                        <button class="card-btn run" onclick="startWorkoutById('${w.id}')">RUN WORKOUT</button>
+                        <button class="card-btn run" onclick="startWorkoutById('${w.id}')" ${w.type === 'mobility' && (!w.exercises || w.exercises.length === 0) ? 'disabled' : ''}>RUN WORKOUT</button>
                         <div class="card-secondary-actions">
+                            <button class="card-btn assign" onclick="toggleSchedulePanel('${w.id}')">SCHEDULE</button>
                             <button class="card-btn edit" onclick="openBuilder('${w.id}')">EDIT</button>
+                            <button class="card-btn duplicate" onclick="duplicateWorkout('${w.id}')">DUPLICATE</button>
                             <button class="card-btn delete" onclick="deleteWorkout('${w.id}')">DELETE</button>
                         </div>
+                        ${schedulePanelHTML}
                     </div>
                 </div>
                 `;
     }).join('')}
+        </div>
+    `;
+}
+
+// --- Week View Logic ---
+function renderWeekView() {
+    const weekDates = getCurrentWeekDates();
+    
+    // Build select dropdown of all workouts
+    const workoutOptions = appState.workouts.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+    
+    let gridHTML = weekDates.map(day => {
+        const plannedItems = (schedule[day.dateStr] || []).map(id => {
+            const w = appState.workouts.find(work => work.id === id);
+            if (!w) return '';
+            return `<div class="planned-item" onclick="startWorkoutById('${w.id}')">${w.name} <span style="opacity: 0.5; font-size: 0.8em; float: right;">▶</span></div>`;
+        }).join('');
+        
+        return `
+            <div class="day-column">
+                <h3>${day.label}</h3>
+                <div style="font-size: 0.75rem; text-align: center; color: rgba(255,255,255,0.4); margin-bottom: 0.5rem;">${day.dateStr}</div>
+                ${plannedItems}
+                ${(schedule[day.dateStr] || []).length < 3 ? `
+                <div style="margin-top: auto;">
+                    <select class="minimal-select" onchange="if(this.value) { assignWorkoutToDate(this.value, '${day.dateStr}'); switchView('week'); }">
+                        <option value="">+ Add Workout</option>
+                        ${workoutOptions}
+                    </select>
+                </div>
+                ` : '<div style="margin-top: auto; text-align: center; font-size: 0.8rem; color: rgba(255,255,255,0.3);">MAX 3 REACHED</div>'}
+            </div>
+        `;
+    }).join('');
+
+    weekView.innerHTML = `
+        <header class="library-header" style="margin-bottom: 0;">
+            <h1 class="library-title">WEEK PLAN</h1>
+            <div class="header-actions">
+                <button class="builder-btn secondary" onclick="switchView('library')">
+                    <span class="btn-icon">←</span>
+                    <span class="btn-label">BACK TO LIBRARY</span>
+                </button>
+            </div>
+        </header>
+        <div class="week-grid">
+            ${gridHTML}
         </div>
     `;
 }
@@ -175,8 +403,29 @@ function deleteWorkout(id) {
     if (confirm(`Delete "${workout.name}"? This cannot be undone.`)) {
         appState.workouts = appState.workouts.filter(w => w.id !== id);
         storage.saveWorkouts(appState.workouts);
+        
+        // Clean schedule ghosts
+        Object.keys(schedule).forEach(date => {
+            schedule[date] = schedule[date].filter(workoutId => workoutId !== id);
+        });
+        localStorage.setItem('kinetic_schedule', JSON.stringify(schedule));
+        
         renderLibrary();
     }
+}
+
+function duplicateWorkout(id) {
+    const workout = appState.workouts.find(w => w.id === id);
+    if (!workout) return;
+    
+    const clone = structuredClone(workout);
+    clone.id = crypto.randomUUID();
+    clone.name = clone.name + ' (Copy)';
+    clone.intervals.forEach(i => i.id = crypto.randomUUID());
+    
+    appState.workouts.push(clone);
+    storage.saveWorkouts(appState.workouts);
+    renderLibrary();
 }
 
 // --- Builder Logic ---
@@ -185,16 +434,23 @@ function openBuilder(id = null) {
         const workout = appState.workouts.find(w => w.id === id);
         appState.builder = JSON.parse(JSON.stringify(workout));
         appState.builder.isNew = false;
+        if (!appState.builder.type) appState.builder.type = 'cycling';
+        if (!appState.builder.exercises) appState.builder.exercises = [];
+        
         // Backward compatibility: Assign IDs to intervals that don't have them
-        appState.builder.intervals.forEach(interval => {
-            if (!interval.id) interval.id = crypto.randomUUID();
-        });
+        if (appState.builder.intervals) {
+            appState.builder.intervals.forEach(interval => {
+                if (!interval.id) interval.id = crypto.randomUUID();
+            });
+        }
     } else {
         appState.builder = {
             id: crypto.randomUUID(),
             name: 'NEW WORKOUT',
             goal: 'Endurance',
+            type: 'cycling',
             intervals: [createDefaultInterval()],
+            exercises: [],
             isNew: true
         };
     }
@@ -227,7 +483,7 @@ function renderBuilder() {
                     <input type="text" class="builder-input" value="${appState.builder.name}" onchange="appState.builder.name = this.value">
                 </div>
                 <div class="field-item">
-                    <label class="form-label">GOAL</label>
+                    <label class="form-label">GOAL / TAG</label>
                     <select class="builder-select" onchange="appState.builder.goal = this.value">
                         <option value="Endurance" ${appState.builder.goal === 'Endurance' ? 'selected' : ''}>Endurance</option>
                         <option value="Power" ${appState.builder.goal === 'Power' ? 'selected' : ''}>Power</option>
@@ -235,13 +491,28 @@ function renderBuilder() {
                         <option value="Recovery" ${appState.builder.goal === 'Recovery' ? 'selected' : ''}>Recovery</option>
                     </select>
                 </div>
+                <div class="field-item">
+                    <label class="form-label">TYPE</label>
+                    <select class="builder-select" onchange="appState.builder.type = this.value; if(!appState.builder.exercises.length) { appState.builder.exercises.push({id: crypto.randomUUID(), name:'NEW', duration: 60, reps: 10, sets: 3, instructions: ''}); } renderBuilder()">
+                        <option value="cycling" ${appState.builder.type === 'cycling' ? 'selected' : ''}>Cycling</option>
+                        <option value="stretching" ${appState.builder.type === 'stretching' ? 'selected' : ''}>Stretching</option>
+                        <option value="mobility" ${appState.builder.type === 'mobility' ? 'selected' : ''}>Mobility</option>
+                    </select>
+                </div>
             </div>
-            
+
+            ${appState.builder.type === 'cycling' ? `
             <div class="form-group intervals-section">
                 <label class="form-label section-label">WORKOUT INTERVALS</label>
                 <div class="interval-list-editor" id="interval-editor-list">
-                    ${appState.builder.intervals.map((interval) => `
-                        <div class="interval-editor-item">
+                    ${appState.builder.intervals.map((interval, idx) => `
+                        <div class="interval-editor-item fade-in" draggable="true"
+                             ondragstart="handleDragStart(event, this, ${idx}, 'interval')"
+                             ondragover="handleDragOver(event)"
+                             ondragenter="handleDragEnter(event, this, 'interval')"
+                             ondragleave="handleDragLeave(event, this, 'interval')"
+                             ondrop="handleDrop(event, ${idx}, 'interval')"
+                             ondragend="handleDragEnd(event, this)">
                             <div class="editor-row row-primary">
                                 <div class="interval-field">
                                     <label>TYPE</label>
@@ -295,13 +566,107 @@ function renderBuilder() {
                                     </div>
                                 </div>
 
-                                <button class="remove-interval-btn" onclick="removeInterval('${interval.id}')" title="Delete Step">✖</button>
+                                <div class="interval-actions-group">
+                                    <button class="icon-action-btn" onclick="moveIntervalUp(${idx})" title="Move Up">↑</button>
+                                    <button class="icon-action-btn" onclick="moveIntervalDown(${idx})" title="Move Down">↓</button>
+                                    <button class="icon-action-btn" onclick="duplicateInterval('${interval.id}')" title="Duplicate">⧉</button>
+                                    <button class="remove-interval-btn" onclick="removeInterval('${interval.id}')" title="Delete Step">✖</button>
+                                </div>
                             </div>
                         </div>
                     `).join('')}
                 </div>
                 <button class="builder-btn add" onclick="addInterval()">+ ADD INTERVAL</button>
             </div>
+            ` : ''}
+
+            ${appState.builder.type === 'stretching' ? `
+            <div class="form-group intervals-section">
+                <label class="form-label section-label">STRETCHING EXERCISES</label>
+                <div class="interval-list-editor" id="interval-editor-list">
+                    ${appState.builder.exercises.map((ex, idx) => `
+                        <div class="interval-editor-item fade-in" draggable="true"
+                             ondragstart="handleDragStart(event, this, ${idx}, 'exercise')"
+                             ondragover="handleDragOver(event)"
+                             ondragenter="handleDragEnter(event, this, 'exercise')"
+                             ondragleave="handleDragLeave(event, this, 'exercise')"
+                             ondrop="handleDrop(event, ${idx}, 'exercise')"
+                             ondragend="handleDragEnd(event, this)">
+                            <div class="editor-row row-primary">
+                                <div class="interval-field" style="flex:2">
+                                    <label>EXERCISE NAME</label>
+                                    <input type="text" value="${ex.name || ''}" onchange="updateExercise('${ex.id}', 'name', this.value)">
+                                </div>
+                                <div class="interval-field">
+                                    <label>TIME (SEC)</label>
+                                    <input type="number" value="${ex.duration || 60}" onchange="updateExercise('${ex.id}', 'duration', parseInt(this.value))">
+                                </div>
+                            </div>
+                            
+                            <div class="editor-row row-secondary">
+                                <div class="interval-field" style="flex:1">
+                                    <label>INSTRUCTIONS</label>
+                                    <input type="text" value="${ex.instructions || ''}" placeholder="e.g. Hold deep squat" onchange="updateExercise('${ex.id}', 'instructions', this.value)">
+                                </div>
+                                <div class="interval-actions-group">
+                                    <button class="icon-action-btn" onclick="moveExerciseUp(${idx})" title="Move Up">↑</button>
+                                    <button class="icon-action-btn" onclick="moveExerciseDown(${idx})" title="Move Down">↓</button>
+                                    <button class="icon-action-btn" onclick="duplicateExercise('${ex.id}')" title="Duplicate">⧉</button>
+                                    <button class="remove-interval-btn" onclick="removeExercise('${ex.id}')" title="Delete Step">✖</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="builder-btn add" onclick="addStretchingExercise()">+ ADD EXERCISE</button>
+            </div>
+            ` : ''}
+
+            ${appState.builder.type === 'mobility' ? `
+            <div class="form-group intervals-section">
+                <label class="form-label section-label">MOBILITY EXERCISES</label>
+                <div class="interval-list-editor" id="interval-editor-list">
+                    ${appState.builder.exercises.map((ex, idx) => `
+                        <div class="interval-editor-item fade-in" draggable="true"
+                             ondragstart="handleDragStart(event, this, ${idx}, 'exercise')"
+                             ondragover="handleDragOver(event)"
+                             ondragenter="handleDragEnter(event, this, 'exercise')"
+                             ondragleave="handleDragLeave(event, this, 'exercise')"
+                             ondrop="handleDrop(event, ${idx}, 'exercise')"
+                             ondragend="handleDragEnd(event, this)">
+                            <div class="editor-row row-primary">
+                                <div class="interval-field">
+                                    <label>EXERCISE NAME</label>
+                                    <input type="text" value="${ex.name || ''}" onchange="updateExercise('${ex.id}', 'name', this.value)">
+                                </div>
+                                <div class="interval-field">
+                                    <label>REPS</label>
+                                    <input type="number" value="${ex.reps || 10}" onchange="updateExercise('${ex.id}', 'reps', parseInt(this.value))">
+                                </div>
+                                <div class="interval-field">
+                                    <label>SETS</label>
+                                    <input type="number" value="${ex.sets || 3}" onchange="updateExercise('${ex.id}', 'sets', parseInt(this.value))">
+                                </div>
+                            </div>
+                            
+                            <div class="editor-row row-secondary">
+                                <div class="interval-field" style="flex:1">
+                                    <label>INSTRUCTIONS</label>
+                                    <input type="text" value="${ex.instructions || ''}" placeholder="e.g. 3 sets of 10 controlled reps" onchange="updateExercise('${ex.id}', 'instructions', this.value)">
+                                </div>
+                                <div class="interval-actions-group">
+                                    <button class="icon-action-btn" onclick="moveExerciseUp(${idx})" title="Move Up">↑</button>
+                                    <button class="icon-action-btn" onclick="moveExerciseDown(${idx})" title="Move Down">↓</button>
+                                    <button class="icon-action-btn" onclick="duplicateExercise('${ex.id}')" title="Duplicate">⧉</button>
+                                    <button class="remove-interval-btn" onclick="removeExercise('${ex.id}')" title="Delete Step">✖</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="builder-btn add" onclick="addMobilityExercise()">+ ADD EXERCISE</button>
+            </div>
+            ` : ''}
 
             <div class="builder-actions">
                 <button class="builder-btn save" onclick="saveWorkout()">SAVE WORKOUT</button>
@@ -354,30 +719,135 @@ function removeInterval(id) {
     renderBuilder();
 }
 
+function moveIntervalUp(idx) {
+    if (idx === 0) return;
+    const intervals = appState.builder.intervals;
+    [intervals[idx - 1], intervals[idx]] = [intervals[idx], intervals[idx - 1]];
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
+function moveIntervalDown(idx) {
+    const intervals = appState.builder.intervals;
+    if (idx === intervals.length - 1) return;
+    [intervals[idx], intervals[idx + 1]] = [intervals[idx + 1], intervals[idx]];
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
+function duplicateInterval(id) {
+    const intervals = appState.builder.intervals;
+    const idx = intervals.findIndex(i => i.id === id);
+    if (idx === -1) return;
+    const clone = structuredClone(intervals[idx]);
+    clone.id = crypto.randomUUID();
+    intervals.splice(idx + 1, 0, clone);
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
+// --- Exercise Builder Logic (Stretching/Mobility) ---
+function updateExercise(id, path, value) {
+    let target = appState.builder.exercises.find(e => e.id === id);
+    if (!target) return;
+    target[path] = value;
+    appState.builder.isDirty = true;
+}
+
+function addStretchingExercise() {
+    appState.builder.exercises.push({
+        id: crypto.randomUUID(),
+        name: 'NEW STRETCH',
+        duration: 60,
+        instructions: ''
+    });
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
+function addMobilityExercise() {
+    appState.builder.exercises.push({
+        id: crypto.randomUUID(),
+        name: 'NEW EXERCISE',
+        reps: 10,
+        sets: 3,
+        instructions: ''
+    });
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
+function removeExercise(id) {
+    if (appState.builder.exercises.length <= 1) {
+        alert('At least one exercise required.');
+        return;
+    }
+    appState.builder.exercises = appState.builder.exercises.filter(e => e.id !== id);
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
+function moveExerciseUp(idx) {
+    if (idx === 0) return;
+    const arr = appState.builder.exercises;
+    [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
+function moveExerciseDown(idx) {
+    const arr = appState.builder.exercises;
+    if (idx === arr.length - 1) return;
+    [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
+function duplicateExercise(id) {
+    const arr = appState.builder.exercises;
+    const idx = arr.findIndex(e => e.id === id);
+    if (idx === -1) return;
+    const clone = structuredClone(arr[idx]);
+    clone.id = crypto.randomUUID();
+    arr.splice(idx + 1, 0, clone);
+    appState.builder.isDirty = true;
+    renderBuilder();
+}
+
 function validateWorkout(workout) {
     if (!workout.name || workout.name.trim() === '') return false;
-    if (!workout.intervals || workout.intervals.length === 0) return false;
+    
+    if (workout.type === 'cycling') {
+        if (!workout.intervals || workout.intervals.length === 0) return false;
 
-    for (const interval of workout.intervals) {
-        if (!interval.duration || interval.duration <= 0) return false;
-        if (!interval.power) return false;
+        for (const interval of workout.intervals) {
+            if (!interval.duration || interval.duration <= 0) return false;
+            if (!interval.power) return false;
 
-        // Strict Numeric & NaN checks
-        if (interval.power.type === 'fixed') {
-            const val = interval.power.value;
-            if (typeof val !== 'number' || isNaN(val)) return false;
-        } else {
-            const min = interval.power.min;
-            const max = interval.power.max;
-            if (typeof min !== 'number' || isNaN(min)) return false;
-            if (typeof max !== 'number' || isNaN(max)) return false;
-            if (min > max) return false;
+            if (interval.power.type === 'fixed') {
+                const val = interval.power.value;
+                if (typeof val !== 'number' || isNaN(val)) return false;
+            } else {
+                const min = interval.power.min;
+                const max = interval.power.max;
+                if (typeof min !== 'number' || isNaN(min)) return false;
+                if (typeof max !== 'number' || isNaN(max)) return false;
+                if (min > max) return false;
+            }
+
+            if (!interval.cadence || typeof interval.cadence.min !== 'number' || isNaN(interval.cadence.min) || typeof interval.cadence.max !== 'number' || isNaN(interval.cadence.max)) {
+                return false;
+            }
+            if (!interval.hrZone) return false;
         }
-
-        if (!interval.cadence || typeof interval.cadence.min !== 'number' || isNaN(interval.cadence.min) || typeof interval.cadence.max !== 'number' || isNaN(interval.cadence.max)) {
-            return false;
+    } else {
+        if (!workout.exercises || workout.exercises.length === 0) return false;
+        // Simple validation for stretching/mobility
+        for (const ex of workout.exercises) {
+            if (!ex.name || ex.name.trim() === '') return false;
+            if (workout.type === 'stretching' && (!ex.duration || ex.duration <= 0)) return false;
+            if (workout.type === 'mobility' && (!ex.reps || ex.reps <= 0 || !ex.sets || ex.sets <= 0)) return false;
         }
-        if (!interval.hrZone) return false;
     }
     return true;
 }
@@ -414,77 +884,242 @@ function cancelBuilder() {
 function startWorkoutById(id) {
     const workout = appState.workouts.find(w => w.id === id);
     if (!workout || !validateWorkout(workout)) return;
-    if (!workout.intervals || workout.intervals.length === 0) return;
 
+    if (workout.type === 'cycling') {
+        startCyclingWorkout(workout);
+    } else if (workout.type === 'stretching') {
+        startStretchingWorkout(workout);
+    } else if (workout.type === 'mobility') {
+        startMobilityWorkout(workout);
+    }
+}
+
+function startCyclingWorkout(workout) {
+    if (!workout.intervals || workout.intervals.length === 0) return;
+    const prev = appState.view;
     appState.hub = {
+        mode: 'cycling',
         currentWorkout: workout,
         index: 0,
         timeLeft: workout.intervals[0].duration,
         isPaused: true,
+        isCompleted: false,
         lastTick: Date.now(),
-        lastBeep: null
+        lastBeep: null,
+        previousView: prev
     };
+    switchView('hub');
+    updateUI();
+}
 
+function startStretchingWorkout(workout) {
+    if (!workout.exercises || workout.exercises.length === 0) return;
+    const sequence = [];
+    workout.exercises.forEach((ex, idx) => {
+        sequence.push({
+            type: 'stretch',
+            name: ex.name,
+            duration: ex.duration,
+            instructions: ex.instructions || ''
+        });
+        if (idx !== workout.exercises.length - 1) {
+            sequence.push({
+                type: 'rest',
+                name: 'REST',
+                duration: 10,
+                instructions: 'Prepare for next sequence',
+                isRest: true
+            });
+        }
+    });
+
+    const prev = appState.view;
+    appState.hub = {
+        mode: 'stretching',
+        currentWorkout: workout,
+        sequence: sequence,
+        index: 0,
+        timeLeft: sequence[0].duration,
+        isPaused: true,
+        isCompleted: false,
+        lastTick: Date.now(),
+        lastBeep: null,
+        previousView: prev
+    };
+    switchView('hub');
+    updateUI();
+}
+
+function startMobilityWorkout(workout) {
+    if (!workout.exercises || workout.exercises.length === 0) return;
+    const prev = appState.view;
+    appState.hub = {
+        mode: 'mobility',
+        currentWorkout: workout,
+        index: 0,
+        isPaused: true,
+        isCompleted: false,
+        lastTick: Date.now(),
+        lastBeep: null,
+        previousView: prev
+    };
     switchView('hub');
     updateUI();
 }
 
 function updateUI() {
     if (!appState.hub.currentWorkout) return;
-    const current = appState.hub.currentWorkout.intervals[appState.hub.index];
+
+    if (appState.hub.isCompleted) {
+        timerDisplay.textContent = "00:00";
+        intervalTitle.textContent = "DONE";
+        intervalCounter.textContent = "WORKOUT COMPLETE";
+        
+        pauseOverlay.style.display = 'none';
+
+        toggleIcon.textContent = '🏠';
+        toggleLabel.textContent = 'FINISH';
+        
+        mainProgressBar.style.width = `100%`;
+        totalProgressBar.style.width = `100%`;
+        totalProgressText.textContent = `100%`;
+
+        document.getElementById('next-interval-summary').textContent = '--';
+        
+        renderSidebar();
+        return;
+    }
+
+    let current = null;
+    let titleStr = '';
+    let currDuration = 0;
+    
+    if (appState.hub.mode === 'cycling') {
+        current = appState.hub.currentWorkout.intervals[appState.hub.index];
+        titleStr = current.display || current.name;
+        currDuration = current.duration;
+    } else if (appState.hub.mode === 'stretching') {
+        current = appState.hub.sequence[appState.hub.index];
+        titleStr = current.name;
+        currDuration = current.duration;
+    } else if (appState.hub.mode === 'mobility') {
+        current = appState.hub.currentWorkout.exercises[appState.hub.index];
+        titleStr = current.name;
+    }
+
     if (!current) return;
-    const totalWorkoutTime = appState.hub.currentWorkout.intervals.reduce((acc, curr) => acc + (parseInt(curr.duration) || 0), 0);
-    const workIntervalsTotal = appState.hub.currentWorkout.intervals.filter(i => i.type === 'work').length;
+
+    const instructionDisplay = document.getElementById('instruction-display');
+    instructionDisplay.style.display = 'none';
+    timerDisplay.classList.remove('timer-shrink');
 
     // Timer & Status
-    timerDisplay.textContent = formatTime(appState.hub.timeLeft);
-    intervalTitle.textContent = current.display || current.name;
+    if (appState.hub.mode === 'mobility') {
+        timerDisplay.style.display = 'none';
+    } else {
+        timerDisplay.style.display = 'block';
+        timerDisplay.textContent = formatTime(appState.hub.timeLeft);
+    }
+    intervalTitle.textContent = titleStr;
 
     // Interval Counter Logic
-    if (current.type === 'work') {
-        const currentWorkIdx = appState.hub.currentWorkout.intervals.slice(0, appState.hub.index + 1).filter(i => i.type === 'work').length;
-        intervalCounter.textContent = `INTERVAL ${currentWorkIdx}/${workIntervalsTotal}`;
-    } else {
-        intervalCounter.textContent = `${current.name} PHASE`;
+    if (appState.hub.mode === 'cycling') {
+        const workIntervalsTotal = appState.hub.currentWorkout.intervals.filter(i => i.type === 'work').length;
+        if (current.type === 'work') {
+            const currentWorkIdx = appState.hub.currentWorkout.intervals.slice(0, appState.hub.index + 1).filter(i => i.type === 'work').length;
+            intervalCounter.textContent = `INTERVAL ${currentWorkIdx}/${workIntervalsTotal}`;
+        } else {
+            intervalCounter.textContent = `${current.name} PHASE`;
+        }
+    } else if (appState.hub.mode === 'stretching') {
+        intervalCounter.textContent = current.isRest ? 'RECOVERY' : 'ACTIVE STRETCH';
+        if (current.instructions) {
+            instructionDisplay.textContent = current.instructions;
+            instructionDisplay.style.display = 'block';
+        }
+        timerDisplay.classList.add('timer-shrink');
+    } else if (appState.hub.mode === 'mobility') {
+        intervalCounter.textContent = `${current.reps} REPS × ${current.sets} SETS`;
+        if (current.instructions) {
+            instructionDisplay.textContent = current.instructions;
+            instructionDisplay.style.display = 'block';
+        }
     }
 
-    // Metrics
-    let powerDisplay = '';
-    if (current.power.type === 'fixed') {
-        powerDisplay = `${current.power.value}`;
+    // Metrics Visibility
+    const metricsSection = document.getElementById('metrics-section');
+    if (appState.hub.mode === 'cycling') {
+        if (metricsSection) metricsSection.style.display = 'flex';
+        let powerDisplay = '';
+        if (current.power.type === 'fixed') {
+            powerDisplay = `${current.power.value}`;
+        } else {
+            powerDisplay = `${current.power.min}-${current.power.max}`;
+        }
+        powerValue.textContent = powerDisplay;
+        cadenceValueElement.textContent = `${current.cadence.min}-${current.cadence.max}`;
+        hrValueElement.textContent = current.hrZone;
     } else {
-        powerDisplay = `${current.power.min}-${current.power.max}`;
+        if (metricsSection) metricsSection.style.display = 'none'; // Hide metrics for stretching/mobility
     }
-    powerValue.textContent = powerDisplay;
-
-    cadenceValueElement.textContent = `${current.cadence.min}-${current.cadence.max}`;
-    hrValueElement.textContent = current.hrZone;
 
     // Progress Bars
-    const currentProgress = ((current.duration - appState.hub.timeLeft) / current.duration) * 100;
-    mainProgressBar.style.width = `${currentProgress}%`;
+    if (appState.hub.mode === 'mobility') {
+        mainProgressBar.style.width = `100%`;
+        const totalProgress = ((appState.hub.index) / appState.hub.currentWorkout.exercises.length) * 100;
+        totalProgressBar.style.width = `${totalProgress}%`;
+        totalProgressText.textContent = `${Math.floor(totalProgress)}%`;
+    } else {
+        const currentProgress = ((currDuration - appState.hub.timeLeft) / currDuration) * 100;
+        mainProgressBar.style.width = `${currentProgress}%`;
+        
+        let totalWorkoutTime = 0;
+        let timeBeforeCurrent = 0;
+        if (appState.hub.mode === 'cycling') {
+            totalWorkoutTime = appState.hub.currentWorkout.intervals.reduce((acc, curr) => acc + (parseInt(curr.duration) || 0), 0);
+            timeBeforeCurrent = appState.hub.currentWorkout.intervals.slice(0, appState.hub.index).reduce((acc, curr) => acc + (parseInt(curr.duration) || 0), 0);
+        } else if (appState.hub.mode === 'stretching') {
+            totalWorkoutTime = appState.hub.sequence.reduce((acc, curr) => acc + (parseInt(curr.duration) || 0), 0);
+            timeBeforeCurrent = appState.hub.sequence.slice(0, appState.hub.index).reduce((acc, curr) => acc + (parseInt(curr.duration) || 0), 0);
+        }
 
-    const timeBeforeCurrent = appState.hub.currentWorkout.intervals.slice(0, appState.hub.index).reduce((acc, curr) => acc + (parseInt(curr.duration) || 0), 0);
-    const totalElapsed = timeBeforeCurrent + (current.duration - appState.hub.timeLeft);
-    const totalProgress = (totalElapsed / totalWorkoutTime) * 100;
-    totalProgressBar.style.width = `${totalProgress}%`;
-    totalProgressText.textContent = `${Math.floor(totalProgress)}%`;
+        const totalElapsed = timeBeforeCurrent + (currDuration - appState.hub.timeLeft);
+        const totalProgress = (totalElapsed / totalWorkoutTime) * 100;
+        totalProgressBar.style.width = `${totalProgress}%`;
+        totalProgressText.textContent = `${Math.floor(totalProgress)}%`;
+    }
 
     // Controls
-    toggleIcon.textContent = appState.hub.isPaused ? '▶' : '⏸';
-    toggleLabel.textContent = appState.hub.isPaused ? 'RESUME' : 'PAUSE';
-    pauseOverlay.style.display = appState.hub.isPaused ? 'flex' : 'none';
+    if (appState.hub.mode === 'mobility') {
+        toggleIcon.textContent = '⏭';
+        toggleLabel.textContent = 'NEXT';
+        pauseOverlay.style.display = 'none';
+        skipBtn.style.display = 'none';
+    } else {
+        toggleIcon.textContent = appState.hub.isPaused ? '▶' : '⏸';
+        toggleLabel.textContent = appState.hub.isPaused ? 'RESUME' : 'PAUSE';
+        pauseOverlay.style.display = appState.hub.isPaused ? 'flex' : 'none';
+        skipBtn.style.display = 'flex';
+    }
 
     // Next Interval Preview
-    const nextInterval = appState.hub.currentWorkout.intervals[appState.hub.index + 1];
     const nextSummary = document.getElementById('next-interval-summary');
-    if (nextInterval) {
-        const p = nextInterval.power;
-        const powerStr = p.type === 'fixed' ? `${p.value}W` : `${p.min}-${p.max}W`;
-        const cadenceStr = `${nextInterval.cadence.min}-${nextInterval.cadence.max} RPM`;
-        nextSummary.textContent = `${nextInterval.type.toUpperCase()} • ${powerStr} • ${cadenceStr} • ${formatTime(nextInterval.duration)}`;
-    } else {
-        nextSummary.textContent = 'FINAL INTERVAL';
+    if (appState.hub.mode === 'cycling') {
+        const nextInterval = appState.hub.currentWorkout.intervals[appState.hub.index + 1];
+        if (nextInterval) {
+            const p = nextInterval.power;
+            const powerStr = p.type === 'fixed' ? `${p.value}W` : `${p.min}-${p.max}W`;
+            const cadenceStr = `${nextInterval.cadence.min}-${nextInterval.cadence.max} RPM`;
+            nextSummary.textContent = `${nextInterval.type.toUpperCase()} • ${powerStr} • ${cadenceStr} • ${formatTime(nextInterval.duration)}`;
+        } else {
+            nextSummary.textContent = 'FINAL INTERVAL';
+        }
+    } else if (appState.hub.mode === 'stretching') {
+        const nextInterval = appState.hub.sequence[appState.hub.index + 1];
+        nextSummary.textContent = nextInterval ? `NEXT: ${nextInterval.name}` : 'FINAL STEP';
+    } else if (appState.hub.mode === 'mobility') {
+        const nextInterval = appState.hub.currentWorkout.exercises[appState.hub.index + 1];
+        nextSummary.textContent = nextInterval ? `NEXT: ${nextInterval.name}` : 'FINAL EXERCISE';
     }
 
     renderSidebar();
@@ -510,20 +1145,29 @@ function scrollToActiveInterval() {
 function renderSidebar() {
     if (!appState.hub.currentWorkout) return;
     intervalList.innerHTML = '';
-    appState.hub.currentWorkout.intervals.forEach((interval, idx) => {
+    let items = [];
+    if (appState.hub.mode === 'cycling') {
+        items = appState.hub.currentWorkout.intervals;
+    } else if (appState.hub.mode === 'stretching') {
+        items = appState.hub.sequence;
+    } else if (appState.hub.mode === 'mobility') {
+        items = appState.hub.currentWorkout.exercises;
+    }
+
+    items.forEach((interval, idx) => {
         const li = document.createElement('li');
         let statusText = 'PENDING';
         let className = 'step-item';
 
-        if (idx < appState.hub.index) {
+        if (appState.hub.isCompleted || idx < appState.hub.index) {
             className += ' done';
             statusText = 'DONE';
         } else if (idx === appState.hub.index) {
             className += ' active';
-            statusText = 'ACTIVE';
+            statusText = appState.hub.mode === 'mobility' ? 'CURRENT' : 'ACTIVE';
         } else if (idx === appState.hub.index + 1) {
             className += ' next-step';
-            statusText = 'NEXT UP';
+            statusText = appState.hub.mode === 'mobility' ? 'NEXT' : 'NEXT UP';
         }
 
         li.className = className;
@@ -532,7 +1176,7 @@ function renderSidebar() {
             <div class="step-info">
                 <header>
                     <span class="step-name">${interval.name}</span>
-                    <span class="step-duration">${formatTime(interval.duration)}</span>
+                    <span class="step-duration">${appState.hub.mode === 'mobility' ? `x${interval.sets}` : formatTime(interval.duration)}</span>
                 </header>
                 <div class="step-status">${statusText}</div>
             </div>
@@ -542,7 +1186,7 @@ function renderSidebar() {
 }
 
 function tick() {
-    if (appState.hub.isPaused) return;
+    if (appState.hub.isPaused || !appState.hub.currentWorkout || appState.hub.mode === 'mobility') return;
 
     const now = Date.now();
     const delta = (now - appState.hub.lastTick) / 1000;
@@ -571,23 +1215,45 @@ function tick() {
 function advanceInterval() {
     if (!appState.hub.currentWorkout) return;
     appState.hub.index++;
-    if (appState.hub.index >= appState.hub.currentWorkout.intervals.length) {
-        endWorkout();
-        return;
+    
+    if (appState.hub.mode === 'cycling') {
+        if (appState.hub.index >= appState.hub.currentWorkout.intervals.length) {
+            endWorkout(true);
+            return;
+        }
+        const next = appState.hub.currentWorkout.intervals[appState.hub.index];
+        appState.hub.timeLeft = next.duration;
+    } else if (appState.hub.mode === 'stretching') {
+        if (appState.hub.index >= appState.hub.sequence.length) {
+            endWorkout(true);
+            return;
+        }
+        const next = appState.hub.sequence[appState.hub.index];
+        appState.hub.timeLeft = next.duration;
+    } else if (appState.hub.mode === 'mobility') {
+        if (appState.hub.index >= appState.hub.currentWorkout.exercises.length) {
+            endWorkout(true);
+            return;
+        }
     }
 
-    const next = appState.hub.currentWorkout.intervals[appState.hub.index];
-    appState.hub.timeLeft = next.duration;
     appState.hub.lastBeep = null; // Reset for next countdown
     playBeep(600, 0.15, 0.3); // Transition Sound
     updateUI();
 }
 
-function endWorkout() {
-    appState.hub.isPaused = true;
-    playBeep(800, 0.2, 0.3); // Success Sound
-    setTimeout(() => playBeep(1000, 0.2, 0.3), 150);
-    switchView('library');
+function endWorkout(completed = false) {
+    if (completed) {
+        appState.hub.isPaused = true;
+        appState.hub.isCompleted = true;
+        playBeep(800, 0.2, 0.3); // Success Sound
+        setTimeout(() => playBeep(1000, 0.2, 0.3), 150);
+        updateUI();
+    } else {
+        appState.hub.isPaused = true;
+        appState.hub.isCompleted = false;
+        switchView(appState.hub.previousView || 'library');
+    }
 }
 
 function formatTime(seconds) {
@@ -599,13 +1265,24 @@ function formatTime(seconds) {
 // --- Event Listeners ---
 toggleBtn.addEventListener('click', () => {
     if (!appState.hub.currentWorkout) return;
+    
+    if (appState.hub.isCompleted) {
+        switchView(appState.hub.previousView || 'library');
+        return;
+    }
+    
+    if (appState.hub.mode === 'mobility') {
+        advanceInterval();
+        return;
+    }
+    
     appState.hub.isPaused = !appState.hub.isPaused;
     if (!appState.hub.isPaused) appState.hub.lastTick = Date.now();
     updateUI();
 });
 
 skipBtn.addEventListener('click', () => {
-    if (!appState.hub.currentWorkout) return;
+    if (!appState.hub.currentWorkout || appState.hub.isCompleted) return;
     advanceInterval();
     updateUI();
 });
@@ -613,6 +1290,7 @@ skipBtn.addEventListener('click', () => {
 resetBtn.addEventListener('click', () => {
     if (!appState.hub.currentWorkout) return;
     if (confirm('Reset workout?')) {
+        appState.hub.isCompleted = false;
         appState.hub.index = 0;
         appState.hub.timeLeft = appState.hub.currentWorkout.intervals[0].duration;
         appState.hub.isPaused = true;
@@ -622,7 +1300,7 @@ resetBtn.addEventListener('click', () => {
 
 endWorkoutBtn.addEventListener('click', () => {
     if (confirm('End and exit workout?')) {
-        endWorkout();
+        endWorkout(false);
     }
 });
 

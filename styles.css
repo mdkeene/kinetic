@@ -31,11 +31,10 @@ body {
     font-family: var(--font-family);
     height: 100%;
     width: 100%;
-    overflow: hidden;
 }
 
 #app-viewport {
-    height: 100dvh;
+    height: 100vh;
     width: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -45,17 +44,19 @@ body {
 
 #app-wrapper {
     display: flex;
-    height: 100%;
+    height: 100vh;
     width: 100%;
 }
 
 /* Main Dashboard */
 #main-dashboard {
+    min-height: 0;
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: var(--sz-5);
+    padding: var(--sz-4);
     background-color: var(--surface-main);
+    overflow: hidden;
 }
 
 #app-header {
@@ -144,7 +145,7 @@ body {
     margin: 0 auto;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    padding: 2rem 0;
+    padding: 1.5rem 0;
     flex-shrink: 0;
 }
 
@@ -277,12 +278,12 @@ body {
 /* Sidebar - Pro HUD Scale */
 #sidebar {
     width: 460px;
-    height: 100vh;
+    height: 100%;
     background-color: var(--surface-aside);
     border-left: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    min-height: 0;
 }
 
 .sidebar-header {
@@ -307,6 +308,7 @@ body {
 #sidebar-scroll-area {
     flex: 1;
     overflow-y: auto;
+    min-height: 0;
 
     /* Hide scrollbar functionality */
     scrollbar-width: none;
@@ -605,8 +607,9 @@ body {
 }
 
 .card-secondary-actions {
-    display: flex;
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
 }
 
 .card-btn {
@@ -635,6 +638,18 @@ body {
     background-color: #1a1a1a;
     color: #fff;
     flex: 1;
+}
+
+.card-btn.duplicate {
+    background-color: #111;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #aaa;
+    flex: 1;
+}
+
+.card-btn.duplicate:hover {
+    background-color: #222;
+    color: #fff;
 }
 
 .card-btn.delete {
@@ -803,6 +818,29 @@ body {
 
 .range-group input {
     width: 100%;
+}
+
+.interval-actions-group {
+    display: flex;
+    gap: 0.5rem;
+    align-self: flex-end;
+}
+
+.icon-action-btn {
+    background-color: #111;
+    border: 1px solid #222;
+    color: #aaa;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.icon-action-btn:hover {
+    background-color: #222;
+    color: #fff;
+    border-color: var(--accent-primary);
 }
 
 .remove-interval-btn {
@@ -1096,4 +1134,469 @@ body {
     #next-interval-preview {
         display: none !important;
     }
+}
+
+#hub-view {
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Mordernization */
+
+#main-dashboard,
+#sidebar,
+.workout-card,
+.interval-editor-item,
+#controls-bar,
+#metrics-section {
+    border-radius: 12px;
+}
+
+#sidebar,
+.workout-card,
+.interval-editor-item {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(6px);
+}
+
+/* === MODERNIZATION LAYER 1: RADIUS === */
+
+:root {
+    --radius-lg: 16px;
+    --radius-md: 10px;
+}
+
+/* Main surfaces */
+#main-dashboard,
+#sidebar {
+    border-radius: var(--radius-lg);
+}
+
+/* Components */
+.workout-card,
+.interval-editor-item,
+#controls-bar,
+#metrics-section,
+.overlay-content {
+    border-radius: var(--radius-md);
+}
+
+/* Buttons */
+.control-btn,
+.card-btn,
+.builder-btn,
+.builder-input,
+.builder-select {
+    border-radius: 8px;
+}
+
+/* === MODERNIZATION LAYER 2: DEPTH === */
+
+#main-dashboard {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+#sidebar {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.workout-card,
+.interval-editor-item {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+/* Subtle hover feedback (library only) */
+.workout-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* === MODERNIZATION LAYER 3: COLOR SOFTENING === */
+
+:root {
+    --bg-color: #0a0a0a;
+    --surface-main: #0b0b0b;
+    --surface-aside: #111111;
+    --surface-card: #141414;
+}
+
+/* === MODERNIZATION LAYER 4: TYPOGRAPHY POLISH === */
+
+.library-title {
+    letter-spacing: -0.02em;
+}
+
+.workout-card h3 {
+    letter-spacing: -0.02em;
+}
+
+.metric .value {
+    letter-spacing: -0.02em;
+}
+
+/* === MODERNIZATION LAYER 5: BUTTON FEEL === */
+
+.control-btn.primary,
+.card-btn.run,
+.builder-btn.save {
+    box-shadow: 0 4px 14px rgba(0, 255, 255, 0.25);
+}
+
+.control-btn.secondary:hover,
+.card-btn.edit:hover {
+    background-color: #222;
+}
+
+/* =========================
+   PHASE 2 — VISUAL UPGRADE
+   ========================= */
+
+/* 1. SOFTEN THE PALETTE */
+
+:root {
+    --bg-color: #0f1115;
+    --surface-main: #14171c;
+    --surface-aside: #181c22;
+    --surface-card: #1c2128;
+
+    --accent-primary: #6ecbff;
+    --accent-secondary: #4dabf7;
+
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+}
+
+
+/* 2. GLOBAL BACKGROUND (adds life without distraction) */
+
+body {
+    background: radial-gradient(circle at 20% 20%,
+            rgba(110, 203, 255, 0.08),
+            transparent 40%),
+        radial-gradient(circle at 80% 0%,
+            rgba(100, 255, 200, 0.06),
+            transparent 40%),
+        var(--bg-color);
+}
+
+
+/* 3. GLASS CARDS (this is where glass belongs) */
+
+.workout-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+}
+
+
+/* 4. BUTTON FIXES (huge improvement) */
+
+.control-btn.primary,
+.card-btn.run,
+.builder-btn.save {
+    background: linear-gradient(135deg, #6ecbff, #4dabf7);
+    color: #0b0f14;
+    /* FIX: no more black-on-cyan */
+}
+
+.control-btn.primary:hover,
+.card-btn.run:hover {
+    filter: brightness(1.08);
+}
+
+
+/* 5. DELETE BUTTON (less aggressive, more modern) */
+
+.card-btn.delete {
+    background-color: rgba(255, 80, 80, 0.12);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 80, 80, 0.25);
+}
+
+.card-btn.delete:hover {
+    background-color: rgba(255, 80, 80, 0.2);
+    color: #ff8787;
+}
+
+
+/* 6. EDIT BUTTON (less dead looking) */
+
+.card-btn.edit {
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+
+/* 7. WORKOUT SCREEN — REDUCE HARSHNESS */
+
+#main-dashboard {
+    background-color: var(--surface-main);
+}
+
+#sidebar {
+    background-color: var(--surface-aside);
+}
+
+
+/* 8. TONE DOWN THE GIANT TIMER (this matters a LOT) */
+
+#timer-display {
+    font-size: 16rem;
+    /* was 19rem */
+    color: var(--accent-primary);
+}
+
+
+/* 9. METRICS — LESS BLOCKY */
+
+#metrics-section {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+}
+
+
+/* 10. SIDEBAR ITEMS — LESS BLACK SLABS */
+
+.step-item.active {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.step-item.next-step {
+    background-color: rgba(110, 203, 255, 0.08);
+}
+
+
+/* 11. PROGRESS BARS — SOFTER */
+
+#main-progress-container {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+#total-progress-container {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+
+/* 12. INPUTS (BUILDER CLEANUP) */
+
+.builder-input,
+.builder-select,
+.interval-field input,
+.interval-field select {
+    background-color: #11151a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+
+/* 13. SMALL TYPOGRAPHY POLISH */
+
+.step-name {
+    color: #c9d1d9;
+}
+
+.active .step-name {
+    color: #ffffff;
+}
+
+/* =========================
+   LIGHTER WORKOUT CARDS
+   ========================= */
+
+.workout-card {
+    background: rgba(255, 255, 255, 0.06);
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+
+/* Improve text contrast inside lighter cards */
+.workout-card h3 {
+    color: #f1f5f9;
+}
+
+.workout-goal,
+.stat-label {
+    color: #94a3b8;
+}
+
+
+/* Subtle hover polish */
+.workout-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(110, 203, 255, 0.35);
+}
+
+/* FIX TIMER RESPONSIVENESS */
+
+#timer-display {
+    font-size: clamp(6rem, 12vw, 16rem);
+}
+
+/* === MICRO-INTERACTIONS & DRAG STYLES === */
+.fade-in {
+    animation: fadeInSlide 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeInSlide {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.control-btn, .card-btn, .builder-btn, .icon-action-btn, .remove-interval-btn {
+    transition: all 0.15s ease-out;
+}
+
+.control-btn:active, .card-btn:active, .builder-btn:active, .icon-action-btn:active, .remove-interval-btn:active {
+    transform: scale(0.96);
+}
+
+.workout-card {
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
+}
+
+.workout-card:active {
+    transform: scale(0.98);
+}
+
+.interval-editor-item {
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.interval-editor-item:active {
+    transform: scale(0.99);
+}
+
+/* Drag state styling */
+.dragging {
+    opacity: 0.4 !important;
+    transform: scale(0.98) !important;
+}
+
+.drag-over {
+    border: 2px dashed var(--accent-primary) !important;
+    background-color: rgba(0, 255, 255, 0.05) !important;
+    opacity: 0.9 !important;
+}
+
+/* Inline Scheduler */
+.inline-schedule-panel {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+.day-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+    padding: 0.5rem 0.25rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+    text-align: center;
+}
+.day-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.day-btn.active { 
+    background: rgba(0, 255, 255, 0.15); 
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.minimal-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 0.5rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-align: center;
+    width: 100%;
+    outline: none;
+    text-align-last: center;
+    transition: color 0.2s;
+}
+.minimal-select:hover { color: var(--accent-primary); }
+
+/* Weekly Planner */
+#week-view {
+    padding: 2rem;
+    display: none;
+    flex-direction: column;
+    height: 100dvh;
+    overflow-y: hidden;
+}
+#week-view.active { display: flex; }
+
+.week-grid {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    flex-grow: 1;
+    margin-top: 1rem;
+}
+
+.day-column {
+    flex: 1;
+    min-width: 150px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.day-column h3 {
+    text-align: center;
+    color: var(--accent-primary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.1rem;
+}
+
+.planned-item {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 0.75rem;
+    border-radius: 4px;
+    border-left: 3px solid var(--accent-primary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.planned-item:hover { background: rgba(255, 255, 255, 0.1); }
+
+.timer-shrink {
+    font-size: clamp(4rem, 8vw, 10rem) !important;
+    opacity: 0.8;
+}
+
+#instruction-display {
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    letter-spacing: 0.05rem;
 }
